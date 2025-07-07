@@ -1,42 +1,28 @@
-import fs from "fs/promises";
-import path from "path";
-
-const MAX_TEILNEHMER_PRO_MODUS = 24;
+import { db } from "@/lib/firebaseAdmin";
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Nur POST erlaubt" });
-  }
+  if (req.method !== "POST") return res.status(405).end();
 
   const { name, email, modus } = req.body;
 
-  if (!name || !email || !modus) {
-    return res.status(400).json({ error: "Bitte alle Felder ausfüllen." });
+  if (!name || !email || !["Challenger", "Champions"].includes(modus)) {
+    return res.status(400).json({ error: "Ungültige Eingabe" });
   }
-
-  const erlaubteModi = ["Challenger", "Champions"];
-  if (!erlaubteModi.includes(modus)) {
-    return res.status(400).json({ error: "Ungültiger Modus" });
-  }
-
-  const filePath = path.join(process.cwd(), "teilnehmer.json");
 
   try {
-    const file = await fs.readFile(filePath, "utf8");
-    const data = JSON.parse(file);
+    const snapshot = await db
+      .collection("teilnehmer")
+      .where("modus", "==", modus)
+      .get();
 
-    const anzahl = data.filter(t => t.modus === modus).length;
-    if (anzahl >= MAX_TEILNEHMER_PRO_MODUS) {
-      return res.status(400).json({ error: "Dieser Modus ist voll!" });
+    if (snapshot.size >= 24) {
+      return res.status(400).json({ error: "Modus voll" });
     }
 
-    data.push({ name, email, modus });
-
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
-
-    return res.status(200).json({ success: true });
+    await db.collection("teilnehmer").add({ name, email, modus });
+    res.status(200).json({ success: true });
   } catch (err) {
-    console.error("Fehler beim Schreiben der Datei:", err);
-    return res.status(500).json({ error: "Serverfehler beim Speichern" });
+    console.error("Fehler:", err);
+    res.status(500).json({ error: "Serverfehler" });
   }
 }
