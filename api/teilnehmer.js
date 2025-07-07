@@ -1,10 +1,15 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs/promises";
+import path from "path";
 
-const filePath = path.resolve(__dirname, "../teilnehmer.json");
+export default async function handler(req, res) {
+  const filePath = path.join(process.cwd(), "teilnehmer.json");
 
-module.exports = (req, res) => {
-  if (!fs.existsSync(filePath)) return res.status(200).json([]);
-  const data = fs.readFileSync(filePath);
-  res.status(200).json(JSON.parse(data));
-};
+  try {
+    const file = await fs.readFile(filePath, "utf8");
+    const data = JSON.parse(file);
+    res.status(200).json(data);
+  } catch (err) {
+    console.error("Fehler beim Lesen:", err);
+    res.status(500).json({ error: "Fehler beim Lesen der Teilnehmerliste." });
+  }
+}
