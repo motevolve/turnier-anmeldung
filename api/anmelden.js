@@ -1,35 +1,41 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs/promises";
+import path from "path";
 
-const filePath = path.resolve(__dirname, "../teilnehmer.json");
+const MAX_TEILNEHMER = 24;
 
-function loadTeilnehmer() {
-  if (!fs.existsSync(filePath)) return [];
-  const raw = fs.readFileSync(filePath);
-  return JSON.parse(raw);
-}
-
-function saveTeilnehmer(data) {
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
-}
-
-module.exports = (req, res) => {
-  if (req.method !== "POST") return res.status(405).end();
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Nur POST erlaubt" });
+  }
 
   const { name, email, modus } = req.body;
+
   if (!name || !email || !modus) {
-    return res.status(400).json({ error: "Ungültige Eingaben" });
+    return res.status(400).json({ error: "Bitte alle Felder ausfüllen." });
   }
 
-  const teilnehmer = loadTeilnehmer();
+  const filePath = path.join(process.cwd(), "teilnehmer.json");
 
-  const modusCount = teilnehmer.filter(t => t.modus === modus).length;
-  if (modusCount >= 24) {
-    return res.status(400).json({ error: `Maximale Teilnehmerzahl für ${modus} erreicht.` });
+  try {
+    const file = await fs.readFile(filePath, "utf8");
+    const data = JSON.parse(file);
+
+    if (!["ModusA", "ModusB"].includes(modus)) {
+      return res.status(400).json({ error: "Ungültiger Modus" });
+    }
+
+    const anzahl = data.filter((t) => t.modus === modus).length;
+    if (anzahl >= MAX_TEILNEHMER) {
+      return res.status(400).json({ error: "Dieser Modus ist voll!" });
+    }
+
+    data.push({ name, email, modus });
+
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Fehler beim Speichern:", err);
+    return res.status(500).json({ error: "Serverfehler beim Speichern" });
   }
-
-  teilnehmer.push({ name, email, modus });
-  saveTeilnehmer(teilnehmer);
-
-  res.status(200).json({ success: true });
-};
+}
