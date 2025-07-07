@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Turnieranmeldung</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+  <div class="min-h-screen flex flex-col items-center px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Turnieranmeldung</h1>
+
+    <form id="anmeldeForm" class="bg-white w-full max-w-md shadow-md rounded-xl p-6 space-y-4">
+      <div>
+        <label for="name" class="block mb-1 font-medium">Name:</label>
+        <input type="text" id="name" required class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400" />
+      </div>
+
+      <div>
+        <label for="email" class="block mb-1 font-medium">E-Mail:</label>
+        <input type="email" id="email" required class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400" />
+      </div>
+
+      <div>
+        <label for="modus" class="block mb-1 font-medium">Modus wählen:</label>
+        <select id="modus" required class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-400">
+          <option value="Modus A">Modus A</option>
+          <option value="Modus B">Modus B</option>
+        </select>
+      </div>
+
+      <button type="submit" class="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 transition">Anmelden</button>
+    </form>
+
+    <div class="w-full max-w-md mt-8 space-y-6">
+      <div class="bg-white shadow-md rounded-xl p-4">
+        <h2 class="text-xl font-semibold mb-2">Teilnehmer Modus A</h2>
+        <ul id="listeA" class="list-disc pl-5 space-y-1 text-sm text-gray-700"></ul>
+      </div>
+
+      <div class="bg-white shadow-md rounded-xl p-4">
+        <h2 class="text-xl font-semibold mb-2">Teilnehmer Modus B</h2>
+        <ul id="listeB" class="list-disc pl-5 space-y-1 text-sm text-gray-700"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    emailjs.init("3ZUOkztnnRkbxxd8O"); // ⬅️ HIER DEIN PUBLIC KEY EINSETZEN
+
+    const form = document.getElementById('anmeldeForm');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const modus = document.getElementById('modus').value;
+
+      const res = await fetch('/api/anmelden', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, modus })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        alert(data.error);
+      } else {
+        // E-Mail über EmailJS senden
+        emailjs.send("service_xk2haer", "template_gcgudle", {
+          name: name,
+          email: email,
+          modus: modus
+        }).then(() => {
+          console.log("E-Mail gesendet");
+        }, (error) => {
+          console.error("E-Mail fehlgeschlagen:", error);
+        });
+
+        window.location.reload();
+      }
+    });
+
+    async function ladeTeilnehmer() {
+      const res = await fetch('/api/teilnehmer');
+      const daten = await res.json();
+      const listeA = document.getElementById('listeA');
+      const listeB = document.getElementById('listeB');
+      listeA.innerHTML = '';
+      listeB.innerHTML = '';
+
+      daten.forEach(t => {
+        const li = document.createElement('li');
+        li.textContent = `${t.name} (${t.email})`;
+        (t.modus === 'Modus A' ? listeA : listeB).appendChild(li);
+      });
+    }
+
+    ladeTeilnehmer();
+  </script>
+</body>
+</html>
