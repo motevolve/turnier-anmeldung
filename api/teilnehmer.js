@@ -1,7 +1,9 @@
 import { db } from "@/lib/firebaseAdmin";
 
 export default async function handler(req, res) {
-  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
 
   try {
     const snapshot = await db.collection("teilnehmer").get();
@@ -12,8 +14,8 @@ export default async function handler(req, res) {
     }));
 
     res.status(200).json(teilnehmer);
-  } catch (err) {
-    console.error("Fehler beim Abrufen der Teilnehmer:", err);
+  } catch (error) {
+    console.error("Fehler beim Laden der Teilnehmer:", error);
     res.status(500).json({ error: "Serverfehler beim Laden der Teilnehmer" });
   }
 }
